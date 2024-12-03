@@ -4,6 +4,7 @@ import matplotlib
 matplotlib.use('Agg')  # Use a backend that does not require a GUI
 import matplotlib.pyplot as plt
 from scipy.stats import t
+from statsmodels.stats.diagnostic import het_white
 
 # Step 1: Load and Preprocess Data
 print("Step 1: Starting data loading and preprocessing.")
@@ -120,16 +121,30 @@ ss_residuals = np.sum(residuals ** 2)  # Residual sum of squares
 # Calculate R-squared
 r_squared = 1 - (ss_residuals / ss_total)
 
-# Print R-squared value for debugging
+# Calculate Adjusted R-squared
+adjusted_r_squared = 1 - (1 - r_squared) * (len(y) - 1) / (len(y) - X.shape[1])
+
+# Print R-squared and Adjusted R-squared values
 print(f"R-squared: {r_squared:.4f}")
+print(f"Adjusted R-squared: {adjusted_r_squared:.4f}")
 print("Model explains {:.2f}% of the variance in the data.".format(r_squared * 100))
+
+# Calculate and print RSS and TSS
+print("Calculating RSS and TSS...")
+rss = ss_residuals  # Residual Sum of Squares
+tss = ss_total  # Total Sum of Squares
+
+# Print RSS and TSS for debugging
+print(f"Residual Sum of Squares (RSS): {rss:.4f}")
+print(f"Total Sum of Squares (TSS): {tss:.4f}")
 
 print("Step 5 completed successfully.")
 
 
+
 print("---------------------------------------------------------------------------")
 # Step 6: Calculate Additional Metrics
-print("Step 6: Calculating F-statistic, T-statistics, and p-values...")
+print("Step 6: Calculating F-statistic, T-statistics, p-values, and checking for heteroscedasticity...")
 
 # Degrees of freedom
 n = len(y)  # Number of observations
@@ -147,7 +162,19 @@ t_statistics = beta / se_beta
 # P-values for T-statistics
 p_values = [2 * (1 - t.cdf(abs(t_stat), df=n - p - 1)) for t_stat in t_statistics]
 
-# Print results for debugging
+# White's Test for Heteroscedasticity
+white_test_stat, white_p_value, _, _ = het_white(residuals, X)
+
+print("\nWhite's Test for Heteroscedasticity:")
+print(f"  Test Statistic: {white_test_stat:.4f}")
+print(f"  p-Value: {white_p_value:.4e}")
+
+if white_p_value < 0.05:
+    print("  Conclusion: Evidence of heteroscedasticity (variance of residuals is not constant).")
+else:
+    print("  Conclusion: No evidence of heteroscedasticity (residual variance is constant).")
+
+# Print additional metrics for debugging
 print(f"F-statistic: {f_statistic:.4f}")
 print("Coefficients (Beta):", beta)
 print("Standard Errors (SE):", se_beta)
@@ -208,11 +235,27 @@ plt.legend()
 plt.grid()
 
 # Save the plot as an image
-output_file = "predicted_vs_actual.png"
-plt.savefig(output_file)
+output_file_actual_vs_predicted = "predicted_vs_actual.png"
+plt.savefig(output_file_actual_vs_predicted)
+print(f"Actual vs. Predicted plot saved as '{output_file_actual_vs_predicted}'.")
 
-print(f"Plot saved successfully as '{output_file}'.")
+# Residual plot: Residuals vs Predicted Values
+plt.figure(figsize=(10, 6))
+plt.scatter(y_pred, residuals, color="green", alpha=0.7)
+plt.axhline(0, color='red', linestyle='--', label="Zero Residual Line")
+plt.title("Residuals vs Predicted Values")
+plt.xlabel("Predicted Values")
+plt.ylabel("Residuals")
+plt.legend()
+plt.grid()
+
+# Save the residual plot
+output_file_residuals = "residuals_vs_predicted.png"
+plt.savefig(output_file_residuals)
+print(f"Residuals vs. Predicted Values plot saved as '{output_file_residuals}'.")
+
 print("Step 8 completed successfully.")
+
 
 
 print("---------------------------------------------------------------------------")
@@ -222,7 +265,12 @@ print("Step 9: Outputting all results...")
 # Summary of the regression results
 output_summary = {
     "R-squared": r_squared,
+    "Adjusted R-squared": adjusted_r_squared,  # Include Adjusted R-squared
     "F-statistic": f_statistic,
+    "Residual Sum of Squares (RSS)": rss,
+    "Total Sum of Squares (TSS)": tss,
+    "White's Test Statistic": white_test_stat,
+    "White's Test p-Value": f"{white_p_value:.4e}",
     "Coefficients (Beta)": beta.tolist(),
     "Standard Errors (SE)": se_beta.tolist(),
     "T-Statistics": t_statistics.tolist(),
@@ -240,4 +288,15 @@ for key, value in output_summary.items():
     else:
         print(f"{key}: {value}")
 
+# Add White's Test conclusion with formatted p-value
+print("\nWhite's Test Results:")
+print(f"  Test Statistic: {white_test_stat:.4f}")
+print(f"  p-Value: {white_p_value:.4e}")
+
+if white_p_value < 0.05:
+    print("\nConclusion from White's Test: Evidence of heteroscedasticity (variance of residuals is not constant).")
+else:
+    print("\nConclusion from White's Test: No evidence of heteroscedasticity (residual variance is constant).")
+
 print("Step 9 completed successfully.")
+
