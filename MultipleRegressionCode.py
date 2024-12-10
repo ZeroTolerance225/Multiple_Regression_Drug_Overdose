@@ -5,9 +5,11 @@ matplotlib.use('Agg')  # Use a backend that does not require a GUI
 import matplotlib.pyplot as plt
 from scipy.stats import t
 from statsmodels.stats.diagnostic import het_white
+import seaborn as sns
+import os
 
 # Step 1: Load and Preprocess Data
-data = pd.read_csv("VSRR_Provisional_Drug_Overdose_Death_Counts.csv", low_memory=False)
+data = pd.read_csv("/home/alan/Documents/STAT_462/final/VSRR_Provisional_Drug_Overdose_Death_Counts.csv", low_memory=False)
 data.columns = data.columns.str.strip()
 data['Data Value'] = pd.to_numeric(data['Data Value'], errors='coerce')
 
@@ -28,11 +30,12 @@ pivoted_data = filtered_data.pivot_table(
 
 cleaned_data = pivoted_data.dropna()
 
+
 X = cleaned_data[
     ['Heroin (T40.1)', 'Cocaine (T40.5)', 'Psychostimulants with abuse potential (T43.6)', 'Natural & semi-synthetic opioids (T40.2)']
 ].values
 y = cleaned_data['Synthetic opioids, excl. methadone (T40.4)'].values
-
+n = len(X)
 X = np.column_stack((np.ones(X.shape[0]), X))
 
 # Step 2: Compute Regression Coefficients
@@ -44,7 +47,7 @@ y_pred = np.dot(X, beta)
 # Step 4: Calculate Residuals
 residuals = y - y_pred
 
-# Step 5: Evaluate Model Performance
+# Step 5: Model Performance Metrics (R^2)
 ss_total = np.sum((y - np.mean(y)) ** 2)
 ss_residuals = np.sum(residuals ** 2)
 r_squared = 1 - (ss_residuals / ss_total)
@@ -60,6 +63,7 @@ se_beta = np.sqrt(np.diag(np.linalg.inv(np.dot(X.T, X)) * (ss_residuals / (n - p
 t_statistics = beta / se_beta
 p_values = [2 * (1 - t.cdf(abs(t_stat), df=n - p - 1)) for t_stat in t_statistics]
 white_test_stat, white_p_value, _, _ = het_white(residuals, X)
+cond_number = np.linalg.cond(X[:, 1:])
 
 # Step 7: Plot Regression Results
 import os
@@ -95,11 +99,13 @@ plt.savefig(output_file_residuals)
 
 # Step 9: Output All Results
 output_summary = {
+    "n": n,
     "R-squared": r_squared,
     "Adjusted R-squared": adjusted_r_squared,
     "F-statistic": f_statistic,
     "Residual Sum of Squares (RSS)": rss,
     "Total Sum of Squares (TSS)": tss,
+    "Condition Number of X": cond_number,
     "White's Test Statistic": white_test_stat,
     "White's Test p-Value": f"{white_p_value:.4e}",
     "Coefficients (Beta)": beta.tolist(),
@@ -126,3 +132,15 @@ if white_p_value < 0.05:
     print("  Conclusion: Evidence of heteroscedasticity (variance of residuals is not constant).")
 else:
     print("  Conclusion: No evidence of heteroscedasticity (residual variance is constant).")
+
+# ----------------------------------------------------------------------------------------------------
+# Model Evaluation
+# ----------------------------------------------------------------------------------------------------
+
+
+# global usefulness test
+
+# R^2 hypothesis Test
+
+
+# Regression Parameters
